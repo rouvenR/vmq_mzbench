@@ -1,5 +1,9 @@
 #!benchDL
 
+# make_install(rsync = "/vmq_mzbench/", exclude = ["deps"])
+
+make_install(rsync = "/vmq_mzbench/_build/default/deps/")
+make_install(rsync = "/vmq_mzbench/_build/default/deps/mqtt_worker/ebin/")
 
 #######
 # 1_to_1 Scenario:
@@ -10,14 +14,21 @@
 # Runtime: 5 min
 #######
 
-make_install(git = "https://github.com/erlio/vmq_mzbench.git",
-             branch = "master")
+# make_install(git = "https://github.com/erlio/vmq_mzbench.git",
+#             branch = "master")
 
-pool(size = 1000,
+# Runtime parameters (override with --env):
+# clients: int number of workers
+# delay: int milliseconds between publishes
+# messages: int number of publishes per worker
+# qos: 0/1/2
+# broker: broker IP or hostname
+# size: int message payload size in bytes
+pool(size = numvar("clients", 1000),
      worker_type = mqtt_worker,
      worker_start = poisson(100 rps)):
 
-            connect(host = "127.0.0.1",
+            connect(host = var("broker", "127.0.0.1"),
                     port = 1883,
                     client = fixed_client_id("pool1", worker_id()),
                     clean_session = true,
@@ -26,9 +37,10 @@ pool(size = 1000,
                     reconnect_timeout = 10
                     )
             wait(10 sec)
-            subscribe_to_self("prefix/clients/", 0)
+            subscribe_to_self("prefix/clients/", numvar("qos", 0))
             set_signal(pool1, 1)
-            wait_signal(pool1, 1000)
-            loop(time = 5 min, rate = 1 rps):
-                publish_to_self("prefix/clients/", random_binary(150), 0)
+            wait_signal(pool1, numvar("clients", 1000))
+            loop(count = numvar("messages", 300)):
+                publish_to_self("prefix/clients/", random_binary(numvar("size", 150)), numvar("qos", 0))
+                wait(numvar("delay", 1) ms)
             disconnect()
