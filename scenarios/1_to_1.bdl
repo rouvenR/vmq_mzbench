@@ -40,7 +40,6 @@ pool(size = numvar("clients", 1000),
             subscribe_to_self("prefix/clients/", numvar("qos", 0))
             set_signal(pool1, 1)
             wait_signal(pool1, numvar("clients", 1000))
-            loop(count = numvar("messages", 300)):
+            loop(time = numvar("duration", 1) s, rate = numvar("rate", 1) rps):
                 publish_to_self("prefix/clients/", random_binary(numvar("size", 150)), numvar("qos", 0))
-                wait(numvar("delay", 1) ms)
             disconnect()
