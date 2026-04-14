@@ -245,16 +245,16 @@ unsubscribe(#state{mqtt_fsm = SessionPid} = State, _Meta, Topics) ->
     {nil, State}.
 
 subscribe_to_self(#state{client = ClientId} = State, _Meta, TopicPrefix, Qos) ->
-    subscribe(State, _Meta, TopicPrefix ++ ClientId, Qos).
+    subscribe(State, _Meta, TopicPrefix, Qos).
 
 publish_to_self(#state{client = ClientId} = State, _Meta, TopicPrefix, Payload, Qos) ->
-    publish(State, _Meta, TopicPrefix ++ ClientId, Payload, Qos).
+    publish(State, _Meta, TopicPrefix, Payload, Qos).
 
 publish_to_one(State, Meta, TopicPrefix, ClientId, Payload, Qos) ->
     publish_to_one(State, Meta, TopicPrefix, ClientId, Payload, Qos, false).
 
 publish_to_one(State, Meta, TopicPrefix, ClientId, Payload, Qos, Retain) ->
-    publish(State, Meta, TopicPrefix ++ ClientId, Payload, Qos, Retain).
+    publish(State, Meta, TopicPrefix, Payload, Qos, Retain).
 
 idle(#state{mqtt_fsm = SessionPid} = State, _Meta) ->
     gen_fsm:send_all_state_event(SessionPid, {idle}),
