@@ -9,6 +9,7 @@
     disconnect/2,
     publish/5,
     publish/6,
+    publish_border_to_self/4,
     subscribe/3,
     subscribe/4,
     unsubscribe/3,
@@ -48,7 +49,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--record(state, {mqtt_fsm, client}).
+-record(state, {mqtt_fsm, client, broker_index = "local", publish_counter = 0}).
 -record(mqtt, {action}).
 
 -behaviour(gen_mqtt).
@@ -197,9 +198,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 connect(State, _Meta, ConnectOpts) ->
     ClientId = proplists:get_value(client, ConnectOpts),
+    Host = proplists:get_value(host, ConnectOpts, "127.0.0.1"),
     Args = #mqtt{action={idle}},
     {ok, SessionPid} = gen_mqtt:start_link(?MODULE, Args, [{info_fun, {fun stats/2, maps:new()}}|ConnectOpts]),
-    {nil, State#state{mqtt_fsm=SessionPid, client=ClientId}}.
+    {nil, State#state{mqtt_fsm=SessionPid, client=ClientId, broker_index=broker_index_from_host(Host)}}.
 
 disconnect(#state{mqtt_fsm=SessionPid} = State, _Meta) ->
     gen_mqtt:disconnect(SessionPid),
@@ -217,6 +219,20 @@ publish(#state{mqtt_fsm = SessionPid} = State, _Meta, Topic, Payload, QoS, Retai
             {nil, State};
         {error, Reason} ->
             error_logger:warning_msg("Can't validate topic ~p due to ~p~n", [Topic, Reason]),
+            {nil, State}
+    end.
+
+publish_border_to_self(#state{mqtt_fsm = SessionPid, broker_index = BrokerIndex, publish_counter = Counter} = State,
+                       Meta, TopicPrefix, QoS) ->
+    PublisherIndex = proplists:get_value(worker_id, Meta),
+    Payload = border_payload(BrokerIndex, PublisherIndex, Counter),
+    case vmq_topic:validate_topic(publish, list_to_binary(TopicPrefix)) of
+        {ok, TTopic} ->
+            gen_mqtt:publish(SessionPid, TTopic, list_to_binary(Payload), QoS, false),
+            mzb_metrics:notify({"mqtt.message.published.total", counter}, 1),
+            {nil, State#state{publish_counter = Counter + 1}};
+        {error, Reason} ->
+            error_logger:warning_msg("Can't validate topic ~p due to ~p~n", [TopicPrefix, Reason]),
             {nil, State}
     end.
 
@@ -328,12 +344,15 @@ stats({publish_out, MsgId, QoS}, State)  ->
     maps:put({outgoing, MsgId}, os:timestamp(), State);
 stats({publish_in, MsgId, Payload, QoS}, State) ->
     T2 = os:timestamp(),
-    {T1, _OldPayload} = binary_to_term(Payload),
-    Diff = positive(timer:now_diff(T2, T1)),
-    case QoS of
-        0 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency", histogram}, Diff);
-        1 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency.qos1", histogram}, Diff);
-        2 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency.qos2", histogram}, Diff)
+    Diff = publish_latency(Payload, T2),
+    case Diff of
+        undefined -> ok;
+        _ ->
+            case QoS of
+                0 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency", histogram}, Diff);
+                1 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency.qos1", histogram}, Diff);
+                2 -> mzb_metrics:notify({"mqtt.message.pub_to_sub.latency.qos2", histogram}, Diff)
+            end
     end,
     maps:put({incoming, MsgId}, T2, State);
 stats({puback_in, MsgId}, State) ->
@@ -403,6 +422,51 @@ diff(MsgId, State, Metric, MetricType) ->
     mzb_metrics:notify({Metric, MetricType}, positive(timer:now_diff(T2, T1))),
     NewState = maps:remove(MsgId, State),
     NewState.
+
+broker_index_from_host(Host) when is_binary(Host) ->
+    broker_index_from_host(binary_to_list(Host));
+broker_index_from_host(Host) when is_list(Host) ->
+    case string:tokens(Host, ".") of
+        ["10", "0", BrokerIndex, "100"] -> BrokerIndex;
+        _ -> "local"
+    end.
+
+border_payload(BrokerIndex, PublisherIndex, Counter) ->
+    TimestampMs = integer_to_list(erlang:system_time(millisecond)),
+    lists:flatten(io_lib:format("~s,~B,~s,~B", [BrokerIndex, PublisherIndex, TimestampMs, Counter])).
+
+publish_latency(Payload, ReceivedTimestamp) ->
+    case decode_publish_timestamp(Payload) of
+        undefined -> undefined;
+        SentTimestamp -> positive(timer:now_diff(ReceivedTimestamp, SentTimestamp))
+    end.
+
+decode_publish_timestamp(Payload) ->
+    case catch binary_to_term(Payload) of
+        {SentTimestamp, _InnerPayload} when is_tuple(SentTimestamp) ->
+            SentTimestamp;
+        _ ->
+            decode_border_payload_timestamp(Payload)
+    end.
+
+decode_border_payload_timestamp(Payload) when is_binary(Payload) ->
+    decode_border_payload_timestamp(binary_to_list(Payload));
+decode_border_payload_timestamp(Payload) when is_list(Payload) ->
+    case string:tokens(Payload, ",") of
+        [_BrokerIndex, _PublisherIndex, TimestampMs, _Counter] ->
+            case catch list_to_integer(TimestampMs) of
+                SentMs when is_integer(SentMs) -> milliseconds_to_timestamp(SentMs);
+                _ -> undefined
+            end;
+        _ ->
+            undefined
+    end.
+
+milliseconds_to_timestamp(Milliseconds) ->
+    MegaSeconds = Milliseconds div 1000000000,
+    Seconds = (Milliseconds div 1000) rem 1000000,
+    MicroSeconds = (Milliseconds rem 1000) * 1000,
+    {MegaSeconds, Seconds, MicroSeconds}.
 
 positive(Val) when Val < 0 -> 0;
 positive(Val) when Val >= 0 -> Val.

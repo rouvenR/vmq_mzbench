@@ -41,5 +41,5 @@ pool(size = numvar("clients"),
             set_signal(pool1, 1)
             wait_signal(pool1, numvar("clients"))
             loop(time = numvar("duration") sec, rate = numvar("rate") rps):
-                publish_to_self(var("topic"), random_binary(numvar("size")), numvar("qos"))
+                publish_border_to_self(var("topic"), numvar("qos"))
             disconnect()
