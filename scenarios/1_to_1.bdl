@@ -28,7 +28,7 @@ pool(size = numvar("clients"),
      worker_type = mqtt_worker,
      worker_start = poisson(100 rps)):
 
-            connect(host = var("broker", var("broker")),
+            connect(host = var("broker", "127.0.0.1"),
                     port = 1883,
                     client = fixed_client_id("pool1", worker_id()),
                     clean_session = true,
