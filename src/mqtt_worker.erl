@@ -10,6 +10,7 @@
     publish/5,
     publish/6,
     publish_border_to_self/4,
+    publish_border_to_self/5,
     subscribe/3,
     subscribe/4,
     unsubscribe/3,
@@ -224,8 +225,12 @@ publish(#state{mqtt_fsm = SessionPid} = State, _Meta, Topic, Payload, QoS, Retai
 
 publish_border_to_self(#state{mqtt_fsm = SessionPid, broker_index = BrokerIndex, publish_counter = Counter} = State,
                        Meta, TopicPrefix, QoS) ->
+    publish_border_to_self(State, Meta, TopicPrefix, QoS, 0).
+
+publish_border_to_self(#state{mqtt_fsm = SessionPid, broker_index = BrokerIndex, publish_counter = Counter} = State,
+                       Meta, TopicPrefix, QoS, Size) ->
     PublisherIndex = proplists:get_value(worker_id, Meta),
-    Payload = border_payload(BrokerIndex, PublisherIndex, Counter),
+    Payload = border_payload(BrokerIndex, PublisherIndex, Counter, Size),
     case vmq_topic:validate_topic(publish, list_to_binary(TopicPrefix)) of
         {ok, TTopic} ->
             gen_mqtt:publish(SessionPid, TTopic, list_to_binary(Payload), QoS, false),
@@ -431,9 +436,19 @@ broker_index_from_host(Host) when is_list(Host) ->
         _ -> "local"
     end.
 
-border_payload(BrokerIndex, PublisherIndex, Counter) ->
+border_payload(BrokerIndex, PublisherIndex, Counter, Size) ->
     TimestampMs = integer_to_list(erlang:system_time(millisecond)),
-    lists:flatten(io_lib:format("~s,~B,~s,~B", [BrokerIndex, PublisherIndex, TimestampMs, Counter])).
+    Payload = lists:flatten(io_lib:format("~s,~B,~s,~B", [BrokerIndex, PublisherIndex, TimestampMs, Counter])),
+    ensure_payload_size(Payload, Size).
+
+ensure_payload_size(Payload, Size) when is_integer(Size), Size > 0 ->
+    PayloadSize = byte_size(list_to_binary(Payload)),
+    case Size =< PayloadSize of
+        true -> Payload;
+        false -> Payload ++ lists:duplicate(Size - PayloadSize, $ )
+    end;
+ensure_payload_size(Payload, _Size) ->
+    Payload.
 
 publish_latency(Payload, ReceivedTimestamp) ->
     case decode_publish_timestamp(Payload) of
