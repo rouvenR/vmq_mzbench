@@ -39,6 +39,7 @@ pool(size = numvar("clients_qos0"),
             wait(10 sec)
             set_signal(pool1, 1)
             wait_signal(pool2, numvar("clients_qos1"))
+            wait_signal(pool3, numvar("clients_qos2"))
             loop(time = numvar("duration") sec, rate = numvar("rate_qos0") rps):
                 publish_border_to_self(var("topic"), 0, numvar("size_qos0"))
             disconnect()
@@ -58,6 +59,27 @@ pool(size = numvar("clients_qos1"),
             wait(10 sec)
             set_signal(pool2, 1)
             wait_signal(pool1, numvar("clients_qos0"))
+            wait_signal(pool3, numvar("clients_qos2"))
             loop(time = numvar("duration") sec, rate = numvar("rate_qos1") rps):
                 publish_border_to_self(var("topic"), 1, numvar("size_qos1"))
+            disconnect()
+
+pool(size = numvar("clients_qos2"),
+     worker_type = mqtt_worker,
+     worker_start = poisson(100 rps)):
+
+            connect(host = var("broker", "127.0.0.1"),
+                    port = 1883,
+                    client = fixed_client_id("pool3", worker_id()),
+                    clean_session = true,
+                    keepalive_interval = 60,
+                    proto_version = 4,
+                    reconnect_timeout = 10
+                    )
+            wait(10 sec)
+            set_signal(pool3, 1)
+            wait_signal(pool1, numvar("clients_qos0"))
+            wait_signal(pool2, numvar("clients_qos1"))
+            loop(time = numvar("duration") sec, rate = numvar("rate_qos2") rps):
+                publish_border_to_self(var("topic"), 1, numvar("size_qos2"))
             disconnect()
