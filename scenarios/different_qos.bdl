@@ -40,7 +40,7 @@ pool(size = numvar("clients_qos0"),
             set_signal(pool1, 1)
             wait_signal(pool2, numvar("clients_qos1"))
             wait_signal(pool3, numvar("clients_qos2"))
-            loop(time = numvar("duration") sec, rate = numvar("rate_qos0") rps):
+            loop(time = numvar("duration_qos0") sec, rate = numvar("rate_qos0") rps):
                 publish_border_to_self(fixed_client_id("qos0_client", worker_id()), 0, numvar("size_qos0"))
             disconnect()
 
@@ -60,7 +60,7 @@ pool(size = numvar("clients_qos1"),
             set_signal(pool2, 1)
             wait_signal(pool1, numvar("clients_qos0"))
             wait_signal(pool3, numvar("clients_qos2"))
-            loop(time = numvar("duration") sec, rate = numvar("rate_qos1") rps):
+            loop(time = numvar("duration_qos1") sec, rate = numvar("rate_qos1") rps):
                 publish_border_to_self(fixed_client_id("qos1_client", worker_id()), 1, numvar("size_qos1"))
             disconnect()
 
@@ -80,6 +80,6 @@ pool(size = numvar("clients_qos2"),
             set_signal(pool3, 1)
             wait_signal(pool1, numvar("clients_qos0"))
             wait_signal(pool2, numvar("clients_qos1"))
-            loop(time = numvar("duration") sec, rate = numvar("rate_qos2") rps):
+            loop(time = numvar("duration_qos2") sec, rate = numvar("rate_qos2") rps):
                 publish_border_to_self(fixed_client_id("qos2_client", worker_id()), 1, numvar("size_qos2"))
             disconnect()
