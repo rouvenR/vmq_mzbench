@@ -26,7 +26,7 @@ make_install(rsync = "/vmq_mzbench/_build/default/deps/mqtt_worker/ebin/")
 # size: int message payload size in bytes
 pool(size = numvar("clients_qos0"),
      worker_type = mqtt_worker,
-     worker_start = poisson(100 rps)):
+     worker_start = poisson(25 rps)):
 
             connect(host = var("broker", "127.0.0.1"),
                     port = 1883,
@@ -46,7 +46,7 @@ pool(size = numvar("clients_qos0"),
 
 pool(size = numvar("clients_qos1"),
      worker_type = mqtt_worker,
-     worker_start = poisson(100 rps)):
+     worker_start = poisson(25 rps)):
 
             connect(host = var("broker", "127.0.0.1"),
                     port = 1883,
@@ -66,7 +66,7 @@ pool(size = numvar("clients_qos1"),
 
 pool(size = numvar("clients_qos2"),
      worker_type = mqtt_worker,
-     worker_start = poisson(100 rps)):
+     worker_start = poisson(25 rps)):
 
             connect(host = var("broker", "127.0.0.1"),
                     port = 1883,
