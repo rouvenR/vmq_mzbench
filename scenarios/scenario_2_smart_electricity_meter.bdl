@@ -39,7 +39,7 @@ pool(size = 3000,
             wait(10 sec)
             set_signal(pool1, 1)
             wait_signal(pool2, 50)
-            loop(time = 600 sec, rate = 24 rpm):
+            loop(time = 600 sec, rate = 8 rpm):
                 publish_border_to_self(fixed_client_id("root/response/qos1_client", worker_id()), 1, 2500)
             disconnect()
 
