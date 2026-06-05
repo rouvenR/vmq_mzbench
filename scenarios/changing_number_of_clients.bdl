@@ -1,0 +1,68 @@
+#!benchDL
+
+# make_install(rsync = "/vmq_mzbench/", exclude = ["deps"])
+
+make_install(rsync = "/vmq_mzbench/_build/default/deps/")
+make_install(rsync = "/vmq_mzbench/_build/default/deps/mqtt_worker/ebin/")
+
+#######
+# 1_to_1 Scenario:
+# 2k clients subscribe to an exclusive topic: "prefix/clients/{client_id}"
+# The same 2k clients send messages on that topic to themselves
+# Overall Msg rate: 2k msg/s
+# Message Size: 150 random bytes
+# Runtime: 5 min
+#######
+
+# make_install(git = "https://github.com/erlio/vmq_mzbench.git",
+#             branch = "master")
+
+# Runtime parameters (override with --env):
+# clients_qos0/clients_qos1/clients_qos2: int number of workers per pool
+# connect_rps: int client connection rate (workers started per second)
+# broker: broker IP or hostname
+# size_qos0/size_qos1/size_qos2: int message payload size in bytes
+pool(size = numvar("clients_qos0"),
+     worker_type = mqtt_worker,
+        worker_start = poisson(numvar("connect_rps") rps)):
+
+            connect(host = var("broker", "127.0.0.1"),
+                    port = 1883,
+                    client = fixed_client_id("pool1", worker_id()),
+                    clean_session = true,
+                    keepalive_interval = 60,
+                    proto_version = 4,
+                    reconnect_timeout = 10
+                    )
+            publish_border_to_self(fixed_client_id("root/qos0_client", worker_id()), 0, numvar("size_qos0"))
+            disconnect()
+
+pool(size = numvar("clients_qos1"),
+     worker_type = mqtt_worker,
+        worker_start = poisson(numvar("connect_rps") rps)):
+
+            connect(host = var("broker", "127.0.0.1"),
+                    port = 1883,
+                    client = fixed_client_id("pool2", worker_id()),
+                    clean_session = true,
+                    keepalive_interval = 60,
+                    proto_version = 4,
+                    reconnect_timeout = 10
+                    )
+            publish_border_to_self(fixed_client_id("root/qos1_client", worker_id()), 1, numvar("size_qos1"))
+            disconnect()
+
+pool(size = numvar("clients_qos2"),
+     worker_type = mqtt_worker,
+        worker_start = poisson(numvar("connect_rps") rps)):
+
+            connect(host = var("broker", "127.0.0.1"),
+                    port = 1883,
+                    client = fixed_client_id("pool3", worker_id()),
+                    clean_session = true,
+                    keepalive_interval = 60,
+                    proto_version = 4,
+                    reconnect_timeout = 10
+                    )
+            publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, numvar("size_qos2"))
+            disconnect()
