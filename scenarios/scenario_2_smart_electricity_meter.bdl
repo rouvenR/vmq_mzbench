@@ -34,7 +34,7 @@ pool(size = 3000,
                     clean_session = true,
                     keepalive_interval = 60,
                     proto_version = 4,
-                    reconnect_timeout = 10
+                    reconnect_timeout = 30
                     )
             wait(10 sec)
             set_signal(pool1, 1)
@@ -53,7 +53,7 @@ pool(size = 50,
                     clean_session = true,
                     keepalive_interval = 60,
                     proto_version = 4,
-                    reconnect_timeout = 10
+                    reconnect_timeout = 30
                     )
             wait(10 sec)
             set_signal(pool2, 1)
