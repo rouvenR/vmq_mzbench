@@ -34,6 +34,7 @@ pool(size = numvar("clients_qos0"),
                     proto_version = 4,
                     reconnect_timeout = 10
                     )
+            wait(10 sec)
             publish_border_to_self(fixed_client_id("root/qos0_client", worker_id()), 0, numvar("size_qos0"))
             disconnect()
 
@@ -49,6 +50,7 @@ pool(size = numvar("clients_qos1"),
                     proto_version = 4,
                     reconnect_timeout = 10
                     )
+            wait(10 sec)
             publish_border_to_self(fixed_client_id("root/qos1_client", worker_id()), 1, numvar("size_qos1"))
             disconnect()
 
@@ -64,5 +66,6 @@ pool(size = numvar("clients_qos2"),
                     proto_version = 4,
                     reconnect_timeout = 10
                     )
+            wait(10 sec)
             publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, numvar("size_qos2"))
             disconnect()
