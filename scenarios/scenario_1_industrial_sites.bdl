@@ -41,7 +41,7 @@ pool(size = 100,
             wait_signal(pool2, 50)
             wait_signal(pool3, 50)
             loop(time = 300 sec, rate = 100 rps):
-                publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, 500)
+                publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, 125)
             disconnect()
 
 pool(size = 50,
@@ -81,5 +81,5 @@ pool(size = 50,
             wait_signal(pool1, 100)
             wait_signal(pool2, 50)
             loop(time = 300 sec, rate = 100 rps):
-                publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, 1000)
+                publish_border_to_self(fixed_client_id("root/qos2_client", worker_id()), 2, 250)
             disconnect()
