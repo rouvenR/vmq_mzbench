@@ -1,3 +1,10 @@
+# Fork Source Project
+This project extends vmq_mzbench. Refer to the [VMQ MZBench source project](https://github.com/vernemq/vmq_mzbench/blob/master/README.md) for more information.
+
+
+# Root Project
+This project is part of the broader BORDER extension project. Refer to the [Orchestration Project](https://github.com/rouvenR/BORDER-grid5k-orchestration) for more context.
+
 # vmq_mzbench
 An MQTT loadtest and usage scenario tool
 
